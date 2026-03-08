@@ -31,6 +31,18 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // Auth check
+  const captureToken = Deno.env.get("CAPTURE_TOKEN");
+  if (captureToken) {
+    const auth = req.headers.get("authorization") ?? "";
+    if (auth.replace("Bearer ", "") !== captureToken) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+
   let body: { content: string; source?: string };
   try {
     body = await req.json();
