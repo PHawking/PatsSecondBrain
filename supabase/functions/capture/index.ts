@@ -19,7 +19,7 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", {
       headers: {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, content-type",
+        "Access-Control-Allow-Headers": "authorization, content-type, x-capture-token",
       },
     });
   }
@@ -34,8 +34,8 @@ Deno.serve(async (req: Request) => {
   // Auth check
   const captureToken = Deno.env.get("CAPTURE_TOKEN");
   if (captureToken) {
-    const auth = req.headers.get("authorization") ?? "";
-    if (auth.replace("Bearer ", "") !== captureToken) {
+    const provided = req.headers.get("x-capture-token") ?? "";
+    if (provided !== captureToken) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },

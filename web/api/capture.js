@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   try {
     const headers = { 'Content-Type': 'application/json' };
     if (process.env.CAPTURE_TOKEN) {
-      headers['Authorization'] = `Bearer ${process.env.CAPTURE_TOKEN}`;
+      headers['x-capture-token'] = process.env.CAPTURE_TOKEN;
     }
     const upstream = await fetch(captureUrl, {
       method: 'POST',
