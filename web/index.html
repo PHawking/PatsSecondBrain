@@ -135,7 +135,7 @@
       btn.disabled = true;
       btn.textContent = 'Capturing…';
       status.className = '';
-      status.style.display = 'none';
+      status.style.display = '';
 
       try {
         const res = await fetch(CAPTURE_URL, {
