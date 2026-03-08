@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
 
   const [row] = await insertRes.json();
   return new Response(
-    JSON.stringify({ id: row.id, created_at: row.created_at }),
+    JSON.stringify({ id: row.id, created_at: row.created_at, metadata }),
     {
       status: 201,
       headers: {
