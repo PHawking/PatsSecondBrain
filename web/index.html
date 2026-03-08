@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Open Brain — Capture</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f0f11;
+      color: #e8e8ec;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: #1a1a1f;
+      border: 1px solid #2e2e38;
+      border-radius: 16px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: #c9b8ff;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      background: #0f0f11;
+      border: 1px solid #2e2e38;
+      border-radius: 10px;
+      color: #e8e8ec;
+      font-size: 1rem;
+      line-height: 1.55;
+      padding: 0.875rem 1rem;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus { border-color: #7c5cfc; }
+    textarea::placeholder { color: #555566; }
+
+    button {
+      align-self: flex-end;
+      background: #7c5cfc;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.65rem 1.4rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    button:hover:not(:disabled) { background: #6a48f0; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #status {
+      font-size: 0.9rem;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      display: none;
+    }
+
+    #status.success {
+      display: block;
+      background: #0e2a1a;
+      border: 1px solid #1a5c38;
+      color: #4ade80;
+    }
+
+    #status.error {
+      display: block;
+      background: #2a0e0e;
+      border: 1px solid #5c1a1a;
+      color: #f87171;
+    }
+
+    .meta { font-size: 0.82rem; color: #888899; margin-top: 0.4rem; }
+
+    .tag {
+      display: inline-block;
+      background: #2a2a3a;
+      border-radius: 4px;
+      padding: 0.15rem 0.45rem;
+      margin: 0.15rem 0.1rem;
+      font-size: 0.8rem;
+      color: #c9b8ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Open Brain</h1>
+    <textarea id="thought" placeholder="What's on your mind?" autofocus></textarea>
+    <button id="submit-btn" onclick="capture()">Capture</button>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const CAPTURE_URL = window.__CAPTURE_URL__ || '/api/capture';
+
+    const textarea = document.getElementById('thought');
+    const btn = document.getElementById('submit-btn');
+    const status = document.getElementById('status');
+
+    // Submit on Ctrl+Enter / Cmd+Enter
+    textarea.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) capture();
+    });
+
+    async function capture() {
+      const content = textarea.value.trim();
+      if (!content) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Capturing…';
+      status.className = '';
+      status.style.display = 'none';
+
+      try {
+        const res = await fetch(CAPTURE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, source: 'web' })
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        const meta = data.metadata || {};
+        const topics = (meta.topics || []).map(t => `<span class="tag">${t}</span>`).join('');
+        const summary = meta.summary ? `<div class="meta">${meta.summary}</div>` : '';
+
+        status.innerHTML = `Captured${topics ? ' · ' + topics : ''}${summary}`;
+        status.className = 'success';
+        textarea.value = '';
+        textarea.focus();
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+        status.className = 'error';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Capture';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# Secrets — never commit these
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+npm-debug.log*
+
+# TypeScript build output
+mcp-server/dist/
+teams-bot/dist/
+
+# Supabase CLI temp files
+supabase/.temp/
+
+# Supabase binary (download from GitHub releases, don't commit)
+supabase.exe
+
+# Claude Code local settings
+.claude/
+
+# Transcript notes (local only)
+Transript/
