@@ -108,6 +108,100 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {},
       },
     },
+    {
+      name: "household_add",
+      description:
+        "Add or update a piece of household knowledge. Use this to record facts like paint colors, appliance models, warranty dates, kids' shoe sizes, Wi-Fi passwords, service history, etc.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            description: "Category of knowledge, e.g. 'paint', 'appliance', 'vehicle', 'kids', 'network', 'contacts', 'home'",
+          },
+          item: {
+            type: "string",
+            description: "The specific item, e.g. 'Living Room', 'Dishwasher', 'Honda CRV', 'Emma'",
+          },
+          key: {
+            type: "string",
+            description: "The attribute name, e.g. 'color', 'model', 'last_service', 'shoe_size', 'wifi_password'",
+          },
+          value: {
+            type: "string",
+            description: "The value, e.g. 'Benjamin Moore Hail Navy', 'Bosch SHX78', '2024-11-15', '5Y'",
+          },
+          notes: {
+            type: "string",
+            description: "Any extra context or notes (optional)",
+          },
+        },
+        required: ["category", "item", "key", "value"],
+      },
+    },
+    {
+      name: "household_search",
+      description:
+        "Search household knowledge by category, item, or key. All parameters are optional — omit to return everything.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            description: "Filter by category (optional)",
+          },
+          item: {
+            type: "string",
+            description: "Filter by item name (optional)",
+          },
+          key: {
+            type: "string",
+            description: "Filter by key/attribute name (optional)",
+          },
+          limit: {
+            type: "number",
+            description: "Maximum results to return (default: 50)",
+          },
+        },
+      },
+    },
+    {
+      name: "household_list",
+      description:
+        "List all household knowledge entries, optionally filtered by category. Returns a summary grouped by category and item.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            description: "Filter by category (optional)",
+          },
+        },
+      },
+    },
+    {
+      name: "household_update",
+      description:
+        "Update the value or notes for an existing household knowledge entry by its ID.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "The UUID of the entry to update",
+          },
+          value: {
+            type: "string",
+            description: "New value (optional)",
+          },
+          notes: {
+            type: "string",
+            description: "New notes (optional)",
+          },
+        },
+        required: ["id"],
+      },
+    },
   ],
 }));
 
@@ -271,6 +365,137 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     return {
       content: [{ type: "text", text: JSON.stringify(stats, null, 2) }],
+    };
+  }
+
+  if (name === "household_add") {
+    const category = args?.category as string;
+    const item = args?.item as string;
+    const key = args?.key as string;
+    const value = args?.value as string;
+    const notes = (args?.notes as string) ?? null;
+
+    if (!category || !item || !key || !value) {
+      return {
+        content: [{ type: "text", text: "Error: category, item, key, and value are required" }],
+        isError: true,
+      };
+    }
+
+    const { data, error } = await supabase
+      .from("household_knowledge")
+      .insert({ category, item, key, value, notes })
+      .select("id, category, item, key, value, notes, created_at")
+      .single();
+
+    if (error) {
+      return {
+        content: [{ type: "text", text: `Error: ${error.message}` }],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [{ type: "text", text: `Saved! ${JSON.stringify(data, null, 2)}` }],
+    };
+  }
+
+  if (name === "household_search") {
+    const category = args?.category as string | undefined;
+    const item = args?.item as string | undefined;
+    const key = args?.key as string | undefined;
+    const limit = (args?.limit as number) ?? 50;
+
+    let query = supabase
+      .from("household_knowledge")
+      .select("id, category, item, key, value, notes, updated_at")
+      .order("category")
+      .order("item")
+      .limit(limit);
+
+    if (category) query = query.ilike("category", `%${category}%`);
+    if (item) query = query.ilike("item", `%${item}%`);
+    if (key) query = query.ilike("key", `%${key}%`);
+
+    const { data, error } = await query;
+
+    if (error) {
+      return {
+        content: [{ type: "text", text: `Error: ${error.message}` }],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
+    };
+  }
+
+  if (name === "household_list") {
+    const category = args?.category as string | undefined;
+
+    let query = supabase
+      .from("household_knowledge")
+      .select("id, category, item, key, value, notes, updated_at")
+      .order("category")
+      .order("item")
+      .order("key");
+
+    if (category) query = query.ilike("category", `%${category}%`);
+
+    const { data, error } = await query;
+
+    if (error) {
+      return {
+        content: [{ type: "text", text: `Error: ${error.message}` }],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
+    };
+  }
+
+  if (name === "household_update") {
+    const id = args?.id as string;
+    const value = args?.value as string | undefined;
+    const notes = args?.notes as string | undefined;
+
+    if (!id) {
+      return {
+        content: [{ type: "text", text: "Error: id is required" }],
+        isError: true,
+      };
+    }
+
+    if (!value && !notes) {
+      return {
+        content: [{ type: "text", text: "Error: at least one of value or notes must be provided" }],
+        isError: true,
+      };
+    }
+
+    const updates: Record<string, string> = {};
+    if (value) updates.value = value;
+    if (notes) updates.notes = notes;
+
+    const { data, error } = await supabase
+      .from("household_knowledge")
+      .update(updates)
+      .eq("id", id)
+      .select("id, category, item, key, value, notes, updated_at")
+      .single();
+
+    if (error) {
+      return {
+        content: [{ type: "text", text: `Error: ${error.message}` }],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [{ type: "text", text: `Updated! ${JSON.stringify(data, null, 2)}` }],
     };
   }
 
