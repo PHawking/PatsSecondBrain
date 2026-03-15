@@ -360,6 +360,7 @@
       <button class="tab-btn active" onclick="switchTab('capture')">Capture</button>
       <button class="tab-btn" onclick="switchTab('search')">Search</button>
       <button class="tab-btn" onclick="switchTab('household')">Household</button>
+      <button class="tab-btn" onclick="switchTab('work')">Work</button>
       <button class="tab-btn" onclick="switchTab('manage')">Manage</button>
     </div>
 
@@ -389,11 +390,18 @@
         <div id="hh-results"></div>
       </div>
 
+      <!-- ── WORK PANEL ── -->
+      <div class="panel" id="panel-work">
+        <div class="status" id="work-status"></div>
+        <div id="work-results"></div>
+      </div>
+
       <!-- ── MANAGE PANEL ── -->
       <div class="panel" id="panel-manage">
         <div class="sub-tabs">
           <button class="sub-tab-btn active" onclick="switchManage('memories', this)">Memories</button>
           <button class="sub-tab-btn" onclick="switchManage('household', this)">Household</button>
+          <button class="sub-tab-btn" onclick="switchManage('work', this)">Work</button>
           <button class="sub-tab-btn" onclick="switchManage('duplicates', this)">Duplicates</button>
         </div>
 
@@ -410,6 +418,11 @@
         <div id="manage-household" style="display:none">
           <div class="status" id="hh-manage-status"></div>
           <div class="results" id="hh-manage-list"></div>
+        </div>
+
+        <div id="manage-work" style="display:none">
+          <div class="status" id="work-manage-status"></div>
+          <div class="results" id="work-manage-list"></div>
         </div>
 
         <div id="manage-duplicates" style="display:none">
@@ -429,6 +442,7 @@
       document.getElementById('panel-' + name).classList.add('active');
       event.target.classList.add('active');
       if (name === 'household') loadHousehold();
+      if (name === 'work') loadWork();
       if (name === 'manage') { currentMemPage = 0; loadManageMemories(0); }
     }
 
@@ -514,8 +528,9 @@
 
         const memories = data.memories || [];
         const household = data.household || [];
+        const work = data.work || [];
 
-        if (memories.length === 0 && household.length === 0) {
+        if (memories.length === 0 && household.length === 0 && work.length === 0) {
           results.innerHTML = '<div class="empty">Nothing found for "' + escHtml(query) + '"</div>';
           return;
         }
@@ -530,6 +545,18 @@
                 <div class="label">${escHtml(h.category || 'Household')}</div>
                 <div class="content"><strong>${escHtml(h.item || '')}</strong>${h.key ? ' · ' + escHtml(h.key) : ''}</div>
                 <div class="sub">${escHtml(h.value || '')}${h.notes ? ' — ' + escHtml(h.notes) : ''}</div>
+              </div>`;
+          });
+        }
+
+        if (work.length > 0) {
+          html += `<div class="section-label" style="margin-top:0.5rem">Work</div>`;
+          work.forEach(w => {
+            html += `
+              <div class="result-card household" style="border-color:#2e4a2e">
+                <div class="label" style="color:#4ade80">${escHtml(w.category || 'Work')}</div>
+                <div class="content"><strong>${escHtml(w.item || '')}</strong>${w.key ? ' · ' + escHtml(w.key) : ''}</div>
+                <div class="sub">${escHtml(w.value || '')}${w.notes ? ' — ' + escHtml(w.notes) : ''}</div>
               </div>`;
           });
         }
@@ -555,6 +582,59 @@
       } finally {
         btn.disabled = false;
         btn.textContent = '🔍';
+      }
+    }
+
+    // ── WORK LIST ──
+    let workLoaded = false;
+
+    async function loadWork() {
+      if (workLoaded) return;
+      const status = document.getElementById('work-status');
+      const results = document.getElementById('work-results');
+
+      status.className = 'status info';
+      status.textContent = 'Loading work knowledge…';
+
+      try {
+        const res = await fetch('/api/work');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        status.className = 'status';
+
+        if (!data.length) {
+          results.innerHTML = '<div class="empty">No work entries yet.<br>Tell your AI to save some work facts!</div>';
+          return;
+        }
+
+        const grouped = {};
+        data.forEach(row => {
+          const cat = row.category || 'General';
+          if (!grouped[cat]) grouped[cat] = [];
+          grouped[cat].push(row);
+        });
+
+        let html = '<div style="display:flex;flex-direction:column;gap:1rem;">';
+        Object.keys(grouped).sort().forEach(cat => {
+          html += `<div class="category-group"><div class="category-title" style="color:#4ade80">${escHtml(cat)}</div>`;
+          grouped[cat].forEach(w => {
+            html += `
+              <div class="hh-row">
+                <div class="item-name">${escHtml(w.item || '')}${w.key ? ' <span style="font-weight:400;color:#888899">· ' + escHtml(w.key) + '</span>' : ''}</div>
+                <div class="item-value">${escHtml(w.value || '')}</div>
+                ${w.notes ? `<div class="item-notes">${escHtml(w.notes)}</div>` : ''}
+              </div>`;
+          });
+          html += '</div>';
+        });
+        html += '</div>';
+
+        results.innerHTML = html;
+        workLoaded = true;
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+        status.className = 'status error';
       }
     }
 
@@ -624,12 +704,13 @@
     let currentMemPage = 0;
 
     function switchManage(name, btn) {
-      ['memories', 'household', 'duplicates'].forEach(n => {
+      ['memories', 'household', 'work', 'duplicates'].forEach(n => {
         document.getElementById('manage-' + n).style.display = n === name ? '' : 'none';
       });
       document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
       if (name === 'household') loadManageHousehold();
+      if (name === 'work') loadManageWork();
       if (name === 'duplicates') loadDuplicates();
     }
 
@@ -779,6 +860,69 @@
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         await loadManageHousehold();
+      } catch (err) {
+        alert('Save failed: ' + err.message);
+      }
+    }
+
+    // ── Work manage ──
+    async function loadManageWork() {
+      const status = document.getElementById('work-manage-status');
+      const list = document.getElementById('work-manage-list');
+      status.className = 'status info';
+      status.textContent = 'Loading…';
+      list.innerHTML = '';
+
+      try {
+        const res = await fetch('/api/manage?resource=work');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        status.className = 'status';
+
+        if (!data.length) {
+          list.innerHTML = '<div class="empty">No work entries yet.</div>';
+          return;
+        }
+
+        list.innerHTML = data.map(w => `
+          <div class="mem-row" id="wk-${w.id}">
+            <div class="mem-date">${escHtml(w.category || '')} · ${escHtml(w.item || '')}${w.key ? ' · ' + escHtml(w.key) : ''}</div>
+            <div class="mem-content">${escHtml(w.value || '')}</div>
+            ${w.notes ? `<div class="item-notes">${escHtml(w.notes)}</div>` : ''}
+            <div class="mem-actions">
+              <button class="ghost-btn" onclick="editWork('${w.id}', ${JSON.stringify(w.value||'')}, ${JSON.stringify(w.notes||'')})">Edit</button>
+              <button class="danger-btn" onclick="deleteItem('work', '${w.id}', 'wk-${w.id}')">Delete</button>
+            </div>
+          </div>`).join('');
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+        status.className = 'status error';
+      }
+    }
+
+    function editWork(id, value, notes) {
+      const row = document.getElementById('wk-' + id);
+      const contentDiv = row.querySelector('.mem-content');
+      const actionsDiv = row.querySelector('.mem-actions');
+      contentDiv.innerHTML = `
+        <input type="text" id="wk-val-${id}" value="${escHtml(value)}" placeholder="Value" style="margin-bottom:0.4rem" />
+        <input type="text" id="wk-notes-${id}" value="${escHtml(notes)}" placeholder="Notes (optional)" />`;
+      actionsDiv.innerHTML = `
+        <button class="primary" style="font-size:0.82rem;padding:0.3rem 0.65rem" onclick="saveWork('${id}')">Save</button>
+        <button class="ghost-btn" onclick="loadManageWork()">Cancel</button>`;
+    }
+
+    async function saveWork(id) {
+      const value = document.getElementById('wk-val-' + id)?.value.trim();
+      const notes = document.getElementById('wk-notes-' + id)?.value.trim();
+      try {
+        const res = await fetch('/api/manage', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resource: 'work', id, value, notes }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await loadManageWork();
       } catch (err) {
         alert('Save failed: ' + err.message);
       }

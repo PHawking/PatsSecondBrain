@@ -41,6 +41,15 @@ export default async function handler(req, res) {
         return res.status(200).json(data);
       }
 
+      if (resource === 'work') {
+        const r = await fetch(
+          `${SUPABASE_URL}/rest/v1/work_knowledge?order=category.asc,item.asc`,
+          { headers: base }
+        );
+        const data = r.ok ? await r.json() : [];
+        return res.status(200).json(data);
+      }
+
       if (resource === 'duplicates') {
         const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/find_duplicate_memories`, {
           method: 'POST',
@@ -62,7 +71,7 @@ export default async function handler(req, res) {
       const { resource, id } = req.body || {};
       if (!resource || !id) return res.status(400).json({ error: 'resource and id required' });
 
-      const table = resource === 'memories' ? 'memories' : 'household_knowledge';
+      const table = resource === 'memories' ? 'memories' : resource === 'work' ? 'work_knowledge' : 'household_knowledge';
       const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
         method: 'DELETE',
         headers: base,
@@ -74,7 +83,7 @@ export default async function handler(req, res) {
       const { resource, id, ...fields } = req.body || {};
       if (!resource || !id) return res.status(400).json({ error: 'resource and id required' });
 
-      const table = resource === 'memories' ? 'memories' : 'household_knowledge';
+      const table = resource === 'memories' ? 'memories' : resource === 'work' ? 'work_knowledge' : 'household_knowledge';
       const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
         method: 'PATCH',
         headers: { ...base, 'Prefer': 'return=representation' },

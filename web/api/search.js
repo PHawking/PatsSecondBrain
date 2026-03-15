@@ -39,20 +39,21 @@ export default async function handler(req, res) {
     });
     const memories = memRes.ok ? await memRes.json() : [];
 
-    // Step 3: Text search on household_knowledge
+    // Step 3: Text search on household_knowledge and work_knowledge
     const q = encodeURIComponent(`%${query.trim()}%`);
-    const hhRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/household_knowledge?or=(item.ilike.${q},value.ilike.${q},category.ilike.${q},notes.ilike.${q})&order=category.asc&limit=10`,
-      {
-        headers: {
-          'apikey': SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-        },
-      }
-    );
-    const household = hhRes.ok ? await hhRes.json() : [];
+    const sbHeaders = {
+      'apikey': SUPABASE_SERVICE_KEY,
+      'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+    };
 
-    return res.status(200).json({ memories, household });
+    const [hhRes, workRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/household_knowledge?or=(item.ilike.${q},value.ilike.${q},category.ilike.${q},notes.ilike.${q})&order=category.asc&limit=10`, { headers: sbHeaders }),
+      fetch(`${SUPABASE_URL}/rest/v1/work_knowledge?or=(item.ilike.${q},value.ilike.${q},category.ilike.${q},notes.ilike.${q})&order=category.asc&limit=10`, { headers: sbHeaders }),
+    ]);
+    const household = hhRes.ok ? await hhRes.json() : [];
+    const work = workRes.ok ? await workRes.json() : [];
+
+    return res.status(200).json({ memories, household, work });
   } catch (err) {
     return res.status(502).json({ error: err.message });
   }
