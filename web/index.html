@@ -247,6 +247,106 @@
       color: #555566;
       margin-bottom: 0.25rem;
     }
+
+    /* ── Manage tab ── */
+    .sub-tabs {
+      display: flex;
+      gap: 0.4rem;
+      border-bottom: 1px solid #2e2e38;
+      padding-bottom: 0.6rem;
+    }
+
+    .sub-tab-btn {
+      background: none;
+      border: none;
+      color: #888899;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 0.3rem 0.7rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .sub-tab-btn.active { background: #2a2a3a; color: #c9b8ff; }
+    .sub-tab-btn:hover:not(.active) { color: #c9b8ff; }
+
+    button.danger-btn {
+      background: #2a0e0e;
+      border: 1px solid #5c1a1a;
+      color: #f87171;
+      border-radius: 6px;
+      padding: 0.3rem 0.65rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button.danger-btn:hover { background: #3a1010; }
+
+    button.ghost-btn {
+      background: #1a1a2e;
+      border: 1px solid #2e2e5c;
+      color: #a0a0cc;
+      border-radius: 6px;
+      padding: 0.3rem 0.65rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button.ghost-btn:hover { background: #2a2a3e; }
+    button.ghost-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .mem-row {
+      background: #0f0f11;
+      border: 1px solid #2e2e38;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .mem-row .mem-date { font-size: 0.75rem; color: #555566; }
+    .mem-row .mem-content { font-size: 0.9rem; line-height: 1.45; }
+    .mem-row .mem-actions { display: flex; gap: 0.4rem; margin-top: 0.25rem; }
+    .mem-row textarea { min-height: 80px; font-size: 0.9rem; }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      font-size: 0.88rem;
+      color: #888899;
+    }
+
+    .dup-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .dup-card {
+      background: #0f0f11;
+      border: 1px solid #5c1a1a;
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-size: 0.88rem;
+    }
+
+    .dup-sim {
+      font-size: 0.75rem;
+      color: #f87171;
+      font-weight: 700;
+      text-align: center;
+      padding: 0.15rem 0;
+    }
   </style>
 </head>
 <body>
@@ -260,6 +360,7 @@
       <button class="tab-btn active" onclick="switchTab('capture')">Capture</button>
       <button class="tab-btn" onclick="switchTab('search')">Search</button>
       <button class="tab-btn" onclick="switchTab('household')">Household</button>
+      <button class="tab-btn" onclick="switchTab('manage')">Manage</button>
     </div>
 
     <!-- Card with panels -->
@@ -288,6 +389,35 @@
         <div id="hh-results"></div>
       </div>
 
+      <!-- ── MANAGE PANEL ── -->
+      <div class="panel" id="panel-manage">
+        <div class="sub-tabs">
+          <button class="sub-tab-btn active" onclick="switchManage('memories', this)">Memories</button>
+          <button class="sub-tab-btn" onclick="switchManage('household', this)">Household</button>
+          <button class="sub-tab-btn" onclick="switchManage('duplicates', this)">Duplicates</button>
+        </div>
+
+        <div id="manage-memories">
+          <div class="status" id="mem-manage-status"></div>
+          <div class="results" id="mem-manage-list"></div>
+          <div class="pagination" id="mem-pagination" style="display:none">
+            <button class="ghost-btn" id="mem-prev" onclick="loadManageMemories(currentMemPage - 1)">← Prev</button>
+            <span id="mem-page-label">Page 1</span>
+            <button class="ghost-btn" id="mem-next" onclick="loadManageMemories(currentMemPage + 1)">Next →</button>
+          </div>
+        </div>
+
+        <div id="manage-household" style="display:none">
+          <div class="status" id="hh-manage-status"></div>
+          <div class="results" id="hh-manage-list"></div>
+        </div>
+
+        <div id="manage-duplicates" style="display:none">
+          <div class="status" id="dup-status"></div>
+          <div id="dup-list"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -299,6 +429,7 @@
       document.getElementById('panel-' + name).classList.add('active');
       event.target.classList.add('active');
       if (name === 'household') loadHousehold();
+      if (name === 'manage') { currentMemPage = 0; loadManageMemories(0); }
     }
 
     // ── CAPTURE ──
@@ -487,6 +618,218 @@
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+    }
+
+    // ── MANAGE ──
+    let currentMemPage = 0;
+
+    function switchManage(name, btn) {
+      ['memories', 'household', 'duplicates'].forEach(n => {
+        document.getElementById('manage-' + n).style.display = n === name ? '' : 'none';
+      });
+      document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      if (name === 'household') loadManageHousehold();
+      if (name === 'duplicates') loadDuplicates();
+    }
+
+    // ── Memories list ──
+    async function loadManageMemories(page) {
+      currentMemPage = page;
+      const status = document.getElementById('mem-manage-status');
+      const list = document.getElementById('mem-manage-list');
+      const pag = document.getElementById('mem-pagination');
+      status.className = 'status info';
+      status.textContent = 'Loading…';
+      list.innerHTML = '';
+
+      try {
+        const res = await fetch(`/api/manage?resource=memories&page=${page}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        status.className = 'status';
+
+        if (!data.length && page === 0) {
+          list.innerHTML = '<div class="empty">No memories yet.</div>';
+          pag.style.display = 'none';
+          return;
+        }
+
+        list.innerHTML = data.map(m => {
+          const date = m.created_at ? new Date(m.created_at).toLocaleString() : '';
+          const summary = m.metadata?.summary ? ' · ' + escHtml(m.metadata.summary) : '';
+          return `<div class="mem-row" id="mem-${m.id}">
+            <div class="mem-date">${escHtml(date)}${summary}</div>
+            <div class="mem-content">${escHtml(m.content)}</div>
+            <div class="mem-actions">
+              <button class="ghost-btn" onclick="editMemory('${m.id}')">Edit</button>
+              <button class="danger-btn" onclick="deleteItem('memories', '${m.id}', 'mem-${m.id}')">Delete</button>
+            </div>
+          </div>`;
+        }).join('');
+
+        pag.style.display = 'flex';
+        document.getElementById('mem-page-label').textContent = `Page ${page + 1}`;
+        document.getElementById('mem-prev').disabled = page === 0;
+        document.getElementById('mem-next').disabled = data.length < 20;
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+        status.className = 'status error';
+      }
+    }
+
+    function editMemory(id) {
+      const row = document.getElementById('mem-' + id);
+      const contentDiv = row.querySelector('.mem-content');
+      const actionsDiv = row.querySelector('.mem-actions');
+      const current = contentDiv.textContent;
+      contentDiv.innerHTML = `<textarea id="mem-edit-${id}">${escHtml(current)}</textarea>`;
+      actionsDiv.innerHTML = `
+        <button class="primary" style="font-size:0.82rem;padding:0.3rem 0.65rem" onclick="saveMemory('${id}')">Save</button>
+        <button class="ghost-btn" onclick="loadManageMemories(currentMemPage)">Cancel</button>`;
+    }
+
+    async function saveMemory(id) {
+      const newContent = document.getElementById('mem-edit-' + id)?.value.trim();
+      if (!newContent) return;
+      try {
+        const res = await fetch('/api/manage', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resource: 'memories', id, content: newContent }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await loadManageMemories(currentMemPage);
+      } catch (err) {
+        alert('Save failed: ' + err.message);
+      }
+    }
+
+    async function deleteItem(resource, id, rowId) {
+      if (!confirm('Delete this entry? This cannot be undone.')) return;
+      try {
+        const res = await fetch('/api/manage', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resource, id }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const el = document.getElementById(rowId);
+        if (el) el.remove();
+      } catch (err) {
+        alert('Delete failed: ' + err.message);
+      }
+    }
+
+    // ── Household manage ──
+    async function loadManageHousehold() {
+      const status = document.getElementById('hh-manage-status');
+      const list = document.getElementById('hh-manage-list');
+      status.className = 'status info';
+      status.textContent = 'Loading…';
+      list.innerHTML = '';
+
+      try {
+        const res = await fetch('/api/manage?resource=household');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        status.className = 'status';
+
+        if (!data.length) {
+          list.innerHTML = '<div class="empty">No household entries yet.</div>';
+          return;
+        }
+
+        list.innerHTML = data.map(h => `
+          <div class="mem-row" id="hh-${h.id}">
+            <div class="mem-date">${escHtml(h.category || '')} · ${escHtml(h.item || '')}${h.key ? ' · ' + escHtml(h.key) : ''}</div>
+            <div class="mem-content">${escHtml(h.value || '')}</div>
+            ${h.notes ? `<div class="item-notes">${escHtml(h.notes)}</div>` : ''}
+            <div class="mem-actions">
+              <button class="ghost-btn" onclick="editHousehold('${h.id}', ${JSON.stringify(h.value||'')}, ${JSON.stringify(h.notes||'')})">Edit</button>
+              <button class="danger-btn" onclick="deleteItem('household', '${h.id}', 'hh-${h.id}')">Delete</button>
+            </div>
+          </div>`).join('');
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+        status.className = 'status error';
+      }
+    }
+
+    function editHousehold(id, value, notes) {
+      const row = document.getElementById('hh-' + id);
+      const contentDiv = row.querySelector('.mem-content');
+      const actionsDiv = row.querySelector('.mem-actions');
+      contentDiv.innerHTML = `
+        <input type="text" id="hh-val-${id}" value="${escHtml(value)}" placeholder="Value" style="margin-bottom:0.4rem" />
+        <input type="text" id="hh-notes-${id}" value="${escHtml(notes)}" placeholder="Notes (optional)" />`;
+      actionsDiv.innerHTML = `
+        <button class="primary" style="font-size:0.82rem;padding:0.3rem 0.65rem" onclick="saveHousehold('${id}')">Save</button>
+        <button class="ghost-btn" onclick="loadManageHousehold()">Cancel</button>`;
+    }
+
+    async function saveHousehold(id) {
+      const value = document.getElementById('hh-val-' + id)?.value.trim();
+      const notes = document.getElementById('hh-notes-' + id)?.value.trim();
+      try {
+        const res = await fetch('/api/manage', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resource: 'household', id, value, notes }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await loadManageHousehold();
+      } catch (err) {
+        alert('Save failed: ' + err.message);
+      }
+    }
+
+    // ── Duplicates ──
+    async function loadDuplicates() {
+      const status = document.getElementById('dup-status');
+      const list = document.getElementById('dup-list');
+      status.className = 'status info';
+      status.textContent = 'Scanning for duplicates…';
+      list.innerHTML = '';
+
+      try {
+        const res = await fetch('/api/manage?resource=duplicates');
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        status.className = 'status';
+
+        if (!data.length) {
+          list.innerHTML = '<div class="empty">No duplicates found above 85% similarity. ✓</div>';
+          return;
+        }
+
+        list.innerHTML = data.map(pair => {
+          const d1 = pair.created_at1 ? new Date(pair.created_at1).toLocaleDateString() : '';
+          const d2 = pair.created_at2 ? new Date(pair.created_at2).toLocaleDateString() : '';
+          const sim = Math.round((pair.similarity || 0) * 100);
+          return `<div style="margin-bottom:1rem">
+            <div class="dup-sim">${sim}% similar</div>
+            <div class="dup-pair">
+              <div class="dup-card" id="dup-${pair.id1}">
+                <div class="mem-date">${escHtml(d1)}</div>
+                <div class="mem-content">${escHtml(pair.content1)}</div>
+                <button class="danger-btn" style="margin-top:0.4rem" onclick="deleteItem('memories','${pair.id1}','dup-${pair.id1}')">Delete</button>
+              </div>
+              <div class="dup-card" id="dup-${pair.id2}">
+                <div class="mem-date">${escHtml(d2)}</div>
+                <div class="mem-content">${escHtml(pair.content2)}</div>
+                <button class="danger-btn" style="margin-top:0.4rem" onclick="deleteItem('memories','${pair.id2}','dup-${pair.id2}')">Delete</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      } catch (err) {
+        status.innerHTML = `Error: ${escHtml(err.message)}<br><small style="opacity:0.7">You may need to run the find_duplicate_memories SQL function in Supabase first.</small>`;
+        status.className = 'status error';
+      }
     }
   </script>
 </body>
