@@ -68,6 +68,42 @@ Deno.serve(async (req: Request) => {
   });
   const embedding = embeddingRes.data[0].embedding;
 
+  // Step 1b: Deduplication check — skip insert if very similar memory exists
+  const dedupRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/match_memories`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_SERVICE_ROLE_KEY,
+      "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+    body: JSON.stringify({
+      query_embedding: embedding,
+      match_threshold: 0.95,
+      match_count: 1,
+    }),
+  });
+
+  if (dedupRes.ok) {
+    const dupes = await dedupRes.json();
+    if (dupes.length > 0) {
+      return new Response(
+        JSON.stringify({
+          duplicate: true,
+          existing_id: dupes[0].id,
+          similarity: dupes[0].similarity,
+          message: "Very similar memory already exists — skipping insert.",
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        },
+      );
+    }
+  }
+
   // Step 2: Extract metadata via LLM
   const metaRes = await openai.chat.completions.create({
     model: "gpt-4o-mini",
