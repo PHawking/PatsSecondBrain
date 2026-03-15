@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Open Brain — Capture</title>
+  <title>Open Brain</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -17,48 +17,97 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 1.5rem;
+      padding: 1.5rem 1rem 3rem;
     }
 
-    .card {
+    .wrapper {
       width: 100%;
-      max-width: 560px;
-      background: #1a1a1f;
-      border: 1px solid #2e2e38;
-      border-radius: 16px;
-      padding: 2rem;
+      max-width: 600px;
       display: flex;
       flex-direction: column;
       gap: 1.25rem;
     }
 
-    h1 {
-      font-size: 1.2rem;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      color: #c9b8ff;
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 0.25rem;
     }
 
-    textarea {
+    header h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #c9b8ff;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      background: #1a1a1f;
+      border: 1px solid #2e2e38;
+      border-radius: 10px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #888899;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.55rem 0.5rem;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .tab-btn.active {
+      background: #7c5cfc;
+      color: #fff;
+    }
+
+    .tab-btn:hover:not(.active) { background: #2a2a3a; color: #c9b8ff; }
+
+    /* ── Card ── */
+    .card {
+      background: #1a1a1f;
+      border: 1px solid #2e2e38;
+      border-radius: 16px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+    }
+
+    /* ── Tab panels ── */
+    .panel { display: none; flex-direction: column; gap: 1.1rem; }
+    .panel.active { display: flex; }
+
+    /* ── Inputs ── */
+    textarea, input[type="text"] {
       width: 100%;
-      min-height: 160px;
       background: #0f0f11;
       border: 1px solid #2e2e38;
       border-radius: 10px;
       color: #e8e8ec;
       font-size: 1rem;
-      line-height: 1.55;
       padding: 0.875rem 1rem;
-      resize: vertical;
       outline: none;
       transition: border-color 0.15s;
+      font-family: inherit;
     }
 
-    textarea:focus { border-color: #7c5cfc; }
-    textarea::placeholder { color: #555566; }
+    textarea { min-height: 140px; line-height: 1.55; resize: vertical; }
+    textarea:focus, input[type="text"]:focus { border-color: #7c5cfc; }
+    textarea::placeholder, input::placeholder { color: #555566; }
 
-    button {
+    /* ── Buttons ── */
+    button.primary {
       align-self: flex-end;
       background: #7c5cfc;
       color: #fff;
@@ -71,32 +120,54 @@
       transition: background 0.15s, opacity 0.15s;
     }
 
-    button:hover:not(:disabled) { background: #6a48f0; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.primary:hover:not(:disabled) { background: #6a48f0; }
+    button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    #status {
+    button.icon-btn {
+      background: #7c5cfc;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.65rem 1rem;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+
+    button.icon-btn:hover:not(:disabled) { background: #6a48f0; }
+    button.icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Status ── */
+    .status {
       font-size: 0.9rem;
       border-radius: 8px;
       padding: 0.75rem 1rem;
       display: none;
     }
 
-    #status.success {
+    .status.success {
       display: block;
       background: #0e2a1a;
       border: 1px solid #1a5c38;
       color: #4ade80;
     }
 
-    #status.error {
+    .status.error {
       display: block;
       background: #2a0e0e;
       border: 1px solid #5c1a1a;
       color: #f87171;
     }
 
-    .meta { font-size: 0.82rem; color: #888899; margin-top: 0.4rem; }
+    .status.info {
+      display: block;
+      background: #1a1a2e;
+      border: 1px solid #2e2e5c;
+      color: #a0a0cc;
+    }
 
+    /* ── Tags ── */
     .tag {
       display: inline-block;
       background: #2a2a3a;
@@ -106,24 +177,132 @@
       font-size: 0.8rem;
       color: #c9b8ff;
     }
+
+    .meta { font-size: 0.82rem; color: #888899; margin-top: 0.3rem; }
+
+    /* ── Search row ── */
+    .search-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* ── Results ── */
+    .results { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .result-card {
+      background: #0f0f11;
+      border: 1px solid #2e2e38;
+      border-radius: 10px;
+      padding: 0.875rem 1rem;
+    }
+
+    .result-card .label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+
+    .result-card.memory .label { color: #7c5cfc; }
+    .result-card.household .label { color: #22d3ee; }
+
+    .result-card .content { font-size: 0.93rem; line-height: 1.5; }
+    .result-card .sub { font-size: 0.8rem; color: #888899; margin-top: 0.3rem; }
+
+    /* ── Household grid ── */
+    .category-group { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .category-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #22d3ee;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid #2e2e38;
+    }
+
+    .hh-row {
+      background: #0f0f11;
+      border: 1px solid #2e2e38;
+      border-radius: 8px;
+      padding: 0.65rem 0.875rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-direction: column;
+    }
+
+    .hh-row .item-name { font-weight: 600; font-size: 0.92rem; }
+    .hh-row .item-value { font-size: 0.88rem; color: #c9b8ff; }
+    .hh-row .item-notes { font-size: 0.8rem; color: #888899; }
+
+    .empty { color: #555566; font-size: 0.9rem; text-align: center; padding: 1.5rem 0; }
+
+    .section-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #555566;
+      margin-bottom: 0.25rem;
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Open Brain</h1>
-    <textarea id="thought" placeholder="What's on your mind?" autofocus></textarea>
-    <button id="submit-btn" onclick="capture()">Capture</button>
-    <div id="status"></div>
+  <div class="wrapper">
+    <header>
+      <h1>🧠 Open Brain</h1>
+    </header>
+
+    <!-- Tab bar -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('capture')">Capture</button>
+      <button class="tab-btn" onclick="switchTab('search')">Search</button>
+      <button class="tab-btn" onclick="switchTab('household')">Household</button>
+    </div>
+
+    <!-- Card with panels -->
+    <div class="card">
+
+      <!-- ── CAPTURE PANEL ── -->
+      <div class="panel active" id="panel-capture">
+        <textarea id="thought" placeholder="What's on your mind?" autofocus></textarea>
+        <button class="primary" id="capture-btn" onclick="capture()">Capture</button>
+        <div class="status" id="capture-status"></div>
+      </div>
+
+      <!-- ── SEARCH PANEL ── -->
+      <div class="panel" id="panel-search">
+        <div class="search-row">
+          <input type="text" id="search-input" placeholder="Search your brain…" />
+          <button class="icon-btn" id="search-btn" onclick="search()">🔍</button>
+        </div>
+        <div class="status" id="search-status"></div>
+        <div class="results" id="search-results"></div>
+      </div>
+
+      <!-- ── HOUSEHOLD PANEL ── -->
+      <div class="panel" id="panel-household">
+        <div class="status" id="hh-status"></div>
+        <div id="hh-results"></div>
+      </div>
+
+    </div>
   </div>
 
   <script>
-    const CAPTURE_URL = window.__CAPTURE_URL__ || '/api/capture';
+    // ── Tab switching ──
+    function switchTab(name) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      event.target.classList.add('active');
+      if (name === 'household') loadHousehold();
+    }
 
+    // ── CAPTURE ──
     const textarea = document.getElementById('thought');
-    const btn = document.getElementById('submit-btn');
-    const status = document.getElementById('status');
-
-    // Submit on Ctrl+Enter / Cmd+Enter
     textarea.addEventListener('keydown', e => {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) capture();
     });
@@ -132,39 +311,182 @@
       const content = textarea.value.trim();
       if (!content) return;
 
+      const btn = document.getElementById('capture-btn');
+      const status = document.getElementById('capture-status');
+
       btn.disabled = true;
       btn.textContent = 'Capturing…';
-      status.className = '';
-      status.style.display = '';
+      status.className = 'status';
 
       try {
-        const res = await fetch(CAPTURE_URL, {
+        const res = await fetch('/api/capture', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content, source: 'web' })
+          body: JSON.stringify({ content, source: 'web' }),
         });
 
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || `HTTP ${res.status}`);
-        }
+        if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`);
 
         const data = await res.json();
-        const meta = data.metadata || {};
-        const topics = (meta.topics || []).map(t => `<span class="tag">${t}</span>`).join('');
-        const summary = meta.summary ? `<div class="meta">${meta.summary}</div>` : '';
 
-        status.innerHTML = `Captured${topics ? ' · ' + topics : ''}${summary}`;
-        status.className = 'success';
+        if (data.duplicate) {
+          status.textContent = '⚡ Already in your brain — skipped duplicate.';
+          status.className = 'status info';
+        } else {
+          const meta = data.metadata || {};
+          const topics = (meta.topics || []).map(t => `<span class="tag">${t}</span>`).join('');
+          const summary = meta.summary ? `<div class="meta">${meta.summary}</div>` : '';
+          status.innerHTML = `✅ Captured${topics ? ' · ' + topics : ''}${summary}`;
+          status.className = 'status success';
+        }
+
         textarea.value = '';
         textarea.focus();
       } catch (err) {
         status.textContent = `Error: ${err.message}`;
-        status.className = 'error';
+        status.className = 'status error';
       } finally {
         btn.disabled = false;
         btn.textContent = 'Capture';
       }
+    }
+
+    // ── SEARCH ──
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+
+    async function search() {
+      const query = searchInput.value.trim();
+      if (!query) return;
+
+      const btn = document.getElementById('search-btn');
+      const status = document.getElementById('search-status');
+      const results = document.getElementById('search-results');
+
+      btn.disabled = true;
+      btn.textContent = '…';
+      status.className = 'status info';
+      status.textContent = 'Searching…';
+      results.innerHTML = '';
+
+      try {
+        const res = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        });
+
+        if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`);
+
+        const data = await res.json();
+        status.className = 'status';
+
+        const memories = data.memories || [];
+        const household = data.household || [];
+
+        if (memories.length === 0 && household.length === 0) {
+          results.innerHTML = '<div class="empty">Nothing found for "' + escHtml(query) + '"</div>';
+          return;
+        }
+
+        let html = '';
+
+        if (household.length > 0) {
+          html += `<div class="section-label">Household</div>`;
+          household.forEach(h => {
+            html += `
+              <div class="result-card household">
+                <div class="label">${escHtml(h.category || 'Household')}</div>
+                <div class="content"><strong>${escHtml(h.item || '')}</strong>${h.key ? ' · ' + escHtml(h.key) : ''}</div>
+                <div class="sub">${escHtml(h.value || '')}${h.notes ? ' — ' + escHtml(h.notes) : ''}</div>
+              </div>`;
+          });
+        }
+
+        if (memories.length > 0) {
+          html += `<div class="section-label" style="margin-top:0.5rem">Memories</div>`;
+          memories.forEach(m => {
+            const topics = (m.metadata?.topics || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('');
+            const date = m.created_at ? new Date(m.created_at).toLocaleDateString() : '';
+            html += `
+              <div class="result-card memory">
+                <div class="label">Memory · ${escHtml(date)}</div>
+                <div class="content">${escHtml(m.content)}</div>
+                ${topics ? `<div class="sub">${topics}</div>` : ''}
+              </div>`;
+          });
+        }
+
+        results.innerHTML = html;
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+        status.className = 'status error';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍';
+      }
+    }
+
+    // ── HOUSEHOLD LIST ──
+    let hhLoaded = false;
+
+    async function loadHousehold() {
+      if (hhLoaded) return;
+      const status = document.getElementById('hh-status');
+      const results = document.getElementById('hh-results');
+
+      status.className = 'status info';
+      status.textContent = 'Loading household knowledge…';
+
+      try {
+        const res = await fetch('/api/household');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        status.className = 'status';
+
+        if (!data.length) {
+          results.innerHTML = '<div class="empty">No household entries yet.<br>Tell your AI to save some facts!</div>';
+          return;
+        }
+
+        // Group by category
+        const grouped = {};
+        data.forEach(row => {
+          const cat = row.category || 'General';
+          if (!grouped[cat]) grouped[cat] = [];
+          grouped[cat].push(row);
+        });
+
+        let html = '<div style="display:flex;flex-direction:column;gap:1rem;">';
+        Object.keys(grouped).sort().forEach(cat => {
+          html += `<div class="category-group"><div class="category-title">${escHtml(cat)}</div>`;
+          grouped[cat].forEach(h => {
+            html += `
+              <div class="hh-row">
+                <div class="item-name">${escHtml(h.item || '')}${h.key ? ' <span style="font-weight:400;color:#888899">· ' + escHtml(h.key) + '</span>' : ''}</div>
+                <div class="item-value">${escHtml(h.value || '')}</div>
+                ${h.notes ? `<div class="item-notes">${escHtml(h.notes)}</div>` : ''}
+              </div>`;
+          });
+          html += '</div>';
+        });
+        html += '</div>';
+
+        results.innerHTML = html;
+        hhLoaded = true;
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+        status.className = 'status error';
+      }
+    }
+
+    function escHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     }
   </script>
 </body>
