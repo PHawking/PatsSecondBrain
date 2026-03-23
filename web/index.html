@@ -347,6 +347,57 @@
       text-align: center;
       padding: 0.15rem 0;
     }
+
+    /* ── File drop zone ── */
+    .file-divider {
+      border: none;
+      border-top: 1px solid #2e2e38;
+      margin: 0.1rem 0;
+    }
+
+    .drop-zone {
+      border: 2px dashed #2e2e38;
+      border-radius: 10px;
+      padding: 1.1rem 1rem;
+      text-align: center;
+      color: #555566;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+      position: relative;
+      line-height: 1.6;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: #7c5cfc;
+      background: #1a1a2e;
+      color: #c9b8ff;
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .file-progress {
+      width: 100%;
+      height: 4px;
+      background: #2e2e38;
+      border-radius: 2px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .file-progress-bar {
+      height: 100%;
+      background: #7c5cfc;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
   </style>
 </head>
 <body>
@@ -372,6 +423,16 @@
         <textarea id="thought" placeholder="What's on your mind?" autofocus></textarea>
         <button class="primary" id="capture-btn" onclick="capture()">Capture</button>
         <div class="status" id="capture-status"></div>
+        <hr class="file-divider" />
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" id="file-input" accept=".pdf,.docx,.txt" />
+          📎 Drop a file or click to select<br>
+          <span style="font-size:0.78rem;color:#444455">PDF · Word · Text · Max 4MB</span>
+        </div>
+        <div class="file-progress" id="file-progress">
+          <div class="file-progress-bar" id="file-progress-bar"></div>
+        </div>
+        <div class="status" id="file-status"></div>
       </div>
 
       <!-- ── SEARCH PANEL ── -->
@@ -434,6 +495,8 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script>
     // ── Tab switching ──
     function switchTab(name) {
@@ -493,6 +556,111 @@
       } finally {
         btn.disabled = false;
         btn.textContent = 'Capture';
+      }
+    }
+
+    // ── FILE DROP ──
+    (function () {
+      const dropZone = document.getElementById('drop-zone');
+      const fileInput = document.getElementById('file-input');
+
+      dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+      dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) handleFile(file);
+      });
+      fileInput.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (file) handleFile(file);
+        fileInput.value = '';
+      });
+    })();
+
+    // Convert ArrayBuffer to base64 safely (avoids stack overflow on large files)
+    function arrayBufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      return btoa(binary);
+    }
+
+    async function handleFile(file) {
+      const status = document.getElementById('file-status');
+      const progress = document.getElementById('file-progress');
+      const bar = document.getElementById('file-progress-bar');
+
+      status.className = 'status info';
+      status.textContent = `Processing "${file.name}"…`;
+      progress.style.display = 'block';
+      bar.style.width = '10%';
+
+      try {
+        const ext = file.name.split('.').pop().toLowerCase();
+        let payload;
+
+        if (ext === 'txt') {
+          const text = await file.text();
+          payload = { type: 'text', text, filename: file.name };
+          bar.style.width = '30%';
+
+        } else if (ext === 'pdf') {
+          if (typeof pdfjsLib === 'undefined') throw new Error('PDF library not loaded. Check your internet connection.');
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let text = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(item => item.str).join(' ') + '\n\n';
+            bar.style.width = `${10 + (i / pdf.numPages) * 30}%`;
+          }
+          if (!text.trim()) throw new Error('No text found — this may be a scanned PDF. Scanned PDFs are not yet supported.');
+          payload = { type: 'pdf', text, filename: file.name };
+
+        } else if (ext === 'docx') {
+          const arrayBuffer = await file.arrayBuffer();
+          const base64 = arrayBufferToBase64(arrayBuffer);
+          payload = { type: 'docx', data: base64, filename: file.name };
+          bar.style.width = '30%';
+
+        } else {
+          throw new Error('Unsupported file type. Use PDF, DOCX, or TXT.');
+        }
+
+        if (file.size > 4 * 1024 * 1024) throw new Error('File exceeds 4MB limit.');
+
+        status.textContent = `Indexing "${file.name}"…`;
+        bar.style.width = '55%';
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        bar.style.width = '90%';
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        bar.style.width = '100%';
+        status.innerHTML = `✅ "${escHtml(file.name)}" indexed — ${data.chunks} chunk${data.chunks !== 1 ? 's' : ''} stored.${data.summary ? `<div class="meta">${escHtml(data.summary)}</div>` : ''}`;
+        status.className = 'status success';
+
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+        status.className = 'status error';
+      } finally {
+        setTimeout(() => { progress.style.display = 'none'; bar.style.width = '0%'; }, 1500);
       }
     }
 

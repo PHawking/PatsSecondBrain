@@ -1,0 +1,7 @@
+{
+  "name": "open-brain-web",
+  "version": "1.0.0",
+  "dependencies": {
+    "mammoth": "^1.8.0"
+  }
+}
