@@ -23,6 +23,14 @@ export default async function handler(req, res) {
       const { resource, page = '0' } = req.query;
       const offset = parseInt(page) * 20;
 
+      if (resource === 'ping') {
+        const r = await fetch(
+          `${SUPABASE_URL}/rest/v1/memories?select=id&limit=1`,
+          { headers: base }
+        );
+        return res.status(200).json({ ok: r.ok, timestamp: new Date().toISOString() });
+      }
+
       if (resource === 'memories') {
         const r = await fetch(
           `${SUPABASE_URL}/rest/v1/memories?select=id,content,metadata,created_at&order=created_at.desc&limit=20&offset=${offset}`,
